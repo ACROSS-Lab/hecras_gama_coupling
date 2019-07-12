@@ -1,2 +1,3 @@
 #MacOS
-*/.DStore
+.DS_store
+*/.DS_store

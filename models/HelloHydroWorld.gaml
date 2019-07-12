@@ -20,13 +20,26 @@ global {
 	
 	float max_value;
 	float min_value;
+	int x_max;
+	int y_max;
+	
+	int nb_houses <- 50;
+	
 	init {
 		max_value <- mnt max_of (each.grid_value);
 		min_value <- (mnt where (each.grid_value > regex_val)) min_of (each.grid_value);
-		int x_max <- (mnt with_max_of (each.grid_x)).grid_x;
+		x_max <- (mnt with_max_of (each.grid_x)).grid_x;
+		y_max <- max(mnt collect (each.grid_y));
+		
+		/*
+		 * 
+		 *
 		write x_max;
 		write "Max value = "+max_value;
 		write "Min value = "+min_value;
+		* 
+		*/
+		
 		ask mnt {
 			if(grid_value = regex_val){
 				color <- #black;
@@ -40,7 +53,27 @@ global {
 			}
 		}
 		
+		do build_house;
 		
+		ask house {
+			create people number:1 with:[location::any_location_in(self),my_house::self];
+		}
+	}
+	
+	action build_house {
+		list<mnt> available <- mnt where (each.grid_x < x_max/4);
+		loop times:nb_houses {
+			mnt the_place <- any(available);
+			create house with:[location::the_place.location,my_place::the_place,color::#gray]{
+				the_place.land_use <- self;
+			}
+			available >- the_place;
+		}
+		
+	}
+	
+	action build_village {
+				
 		ask 4 among (mnt where (each.grid_value = max_value and each.grid_x < x_max/2)) {
 			bool stop <- false;
 			rgb neighbor_color <- rnd_color(255);
@@ -62,10 +95,8 @@ global {
 			}
 		}
 		
-		ask house {
-			create people number:10 with:[location::any_location_in(self),my_house::self];
-		}
 	}
+	
 }
 
 //definition of the grid from the geotiff file: the width and height of the grid are directly read from the asc file. The values of the asc file are stored in the grid_value attribute of the cells.
@@ -96,21 +127,25 @@ species people skills:[moving]{
 	bool working;
 	
 	init {
-		tptf <- path_between(topology(mnt),my_house.my_place,water_body closest_to self);
-		the_site <- mnt first_with (geometry(any(tptf.vertices)).location intersects each);
+		tptf <- path_between(topology(mnt), my_house.my_place, water_body closest_to self);
+		if (tptf=nil or empty(tptf)) { write sample(self); }
+		geometry p <- line(tptf.segments);
+		the_site <- any(mnt where (each overlaps p and each.land_use=nil));
 	}
 	
 	reflex go_build_a_dyke when:the_site!=nil and not(working){
-		 do goto target:the_site on:mnt where (each.land_use!="water" and not(each.land_use is house));
-		 if location overlaps the_site {
-		 	working <- true;
-		 	location <- any_location_in(the_site);
-		 }
+		
+		do goto target:the_site on:mnt where (each.land_use!="water" and not(each.land_use is house));
+		
+		if location overlaps the_site {
+			working <- true;
+			location <- any_location_in(the_site);
+		}
 	}
 	
 	reflex build_dyke when:working {
 		 if(the_site.land_use=nil){the_site.land_use <- "dyke";}
-		 the_site.grid_value <- the_site.grid_value + 1;
+		 the_site.grid_value <- the_site.grid_value + 0.1;
 		 the_site.color <- rgb(the_site.grid_value,the_site.grid_value/2,0);
 	}
 	
