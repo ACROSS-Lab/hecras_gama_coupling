@@ -11,6 +11,8 @@ global {
 	//definiton of the file to import
 	file grid_data <- file("../includes/Hello DEM 200x100.MergedInputs.tif") ;
 	
+	shape_file buildings <- shape_file("../includes/GIS data Phuc Xa/new_building_phuc_xa.shp");
+
 	float regex_val <- -9999.0;
 	
 	//computation of the environment size from the geotiff file
@@ -26,6 +28,16 @@ global {
 	int nb_houses <- 50;
 	
 	init {
+		
+		create building from:buildings;
+		
+		ask building {
+			mnt up_mnt_building <- mnt first_with (self.location overlaps each);
+			up_mnt_building.grid_value <- up_mnt_building.grid_value + rnd(4,6); 
+		}
+		
+		save mnt to:"../results/HelloDEM200x100.tif" type:"geotiff";
+		
 		max_value <- mnt max_of (each.grid_value);
 		min_value <- (mnt where (each.grid_value > regex_val)) min_of (each.grid_value);
 		x_max <- (mnt with_max_of (each.grid_x)).grid_x;
@@ -109,6 +121,8 @@ species water {
 	
 }
 
+species building {}
+
 species house {
 	mnt my_place;
 	rgb color;
@@ -158,6 +172,7 @@ experiment xp type:gui {
 	output {
 		display hellowrold {
 			grid mnt;
+			species building;
 			species house aspect:ThreeDhouse;
 			species people;
 		}
