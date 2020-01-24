@@ -11,7 +11,16 @@ global {
 	//definiton of the file to import
 	file grid_data <- file("../includes/Hello DEM 200x100.MergedInputs.tif") ;
 	
+	//Pre-processing for Springer model
+	bool update_dem <- false;
+	
 	shape_file buildings <- shape_file("../includes/GIS data Phuc Xa/new_building_phuc_xa.shp");
+	
+	graph pedestrian_network;
+	shape_file walking_area <- shape_file("../includes/GIS data Phuc Xa/new_walking_area_phuc_xa.shp");
+	geometry w_area;
+	
+	// --------------------------------
 
 	float regex_val <- -9999.0;
 	
@@ -30,13 +39,21 @@ global {
 	init {
 		
 		create building from:buildings;
+		w_area <- walking_area[0] intersection shape;
 		
-		ask building {
-			mnt up_mnt_building <- mnt first_with (self.location overlaps each);
-			up_mnt_building.grid_value <- up_mnt_building.grid_value + rnd(4,6); 
+		pedestrian_network <- generate_pedestrian_network([building],[w_area],false,false,5.0,0.1,true,0.1,0.0,0.0);
+		write sample(pedestrian_network);
+		create pedestrian_corridor from: pedestrian_network { do initialize distance:10#m obstacles:[building]; }
+		
+		if update_dem {
+			ask building {
+				mnt up_mnt_building <- mnt first_with (self.location overlaps each);
+				up_mnt_building.grid_value <- up_mnt_building.grid_value + rnd(4,6); 
+			}
+			save mnt to:"../results/HelloDEM200x100.tif" type:"geotiff";
 		}
 		
-		save mnt to:"../results/HelloDEM200x100.tif" type:"geotiff";
+		save pedestrian_corridor to:"../results/pedestrian.shp" type:shp;
 		
 		max_value <- mnt max_of (each.grid_value);
 		min_value <- (mnt where (each.grid_value > regex_val)) min_of (each.grid_value);
@@ -123,6 +140,8 @@ species water {
 
 species building {}
 
+species pedestrian_corridor skills:[pedestrian_road] {}
+
 species house {
 	mnt my_place;
 	rgb color;
@@ -172,9 +191,15 @@ experiment xp type:gui {
 	output {
 		display hellowrold {
 			grid mnt;
+			graphics "pedestrian area" transparency:0.2 {
+				draw w_area;
+				draw pedestrian_network color:#brown;
+			}
 			species building;
-			species house aspect:ThreeDhouse;
+			species pedestrian_corridor;
+			//species house aspect:ThreeDhouse;
 			species people;
 		}
+		
 	}
 }
