@@ -8,7 +8,7 @@ The model requires to be loaded with the [Git version of Gama](https://gama-plat
 
 ### Pedestrian plugin:
 
-![#f03c15](You need an access to the Escape private forge hosted at IDEES Rouen)
+You need an access to the Escape private forge hosted at IDEES Rouen
 
 ### HEC-Ras coupling:
 
