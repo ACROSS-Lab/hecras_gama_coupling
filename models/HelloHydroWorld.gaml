@@ -11,8 +11,14 @@ global {
 	//definiton of the file to import
 	file grid_data <- file("../includes/Hello DEM 200x100.MergedInputs.tif") ;
 	
-	//Pre-processing for Springer model
+	/*
+	 * =================================
+	 * Pre-processing for Springer model
+	 * =================================
+	 */
 	bool update_dem <- false;
+	bool update_pedestrian <- false;
+	/* ================================= */
 	
 	shape_file buildings <- shape_file("../includes/GIS data Phuc Xa/new_building_phuc_xa.shp");
 	
@@ -39,11 +45,16 @@ global {
 	init {
 		
 		create building from:buildings;
-		w_area <- walking_area[0] intersection shape;
 		
-		pedestrian_network <- generate_pedestrian_network([building],[w_area],false,false,5.0,0.1,true,0.1,0.0,0.0);
-		write sample(pedestrian_network);
-		create pedestrian_corridor from: pedestrian_network { do initialize distance:10#m obstacles:[building]; }
+		if update_pedestrian {
+			w_area <- walking_area[0] intersection shape;
+			write sample(w_area)+" area is "+w_area.area;
+			list pedestrian_corridors <- generate_pedestrian_network([building],[w_area],false,false,5.0,0.1,true,0.1,0.0,0.0);
+			write sample(pedestrian_corridors);
+			create pedestrian_corridor from: pedestrian_corridors { do initialize distance:10#m obstacles:[building]; }
+			write sample(length(pedestrian_corridor));
+			save pedestrian_corridor to:"../results/pedestrian.shp" type:shp;
+		}
 		
 		if update_dem {
 			ask building {
@@ -52,8 +63,6 @@ global {
 			}
 			save mnt to:"../results/HelloDEM200x100.tif" type:"geotiff";
 		}
-		
-		save pedestrian_corridor to:"../results/pedestrian.shp" type:shp;
 		
 		max_value <- mnt max_of (each.grid_value);
 		min_value <- (mnt where (each.grid_value > regex_val)) min_of (each.grid_value);
@@ -196,7 +205,7 @@ experiment xp type:gui {
 				draw pedestrian_network color:#brown;
 			}
 			species building;
-			species pedestrian_corridor;
+			//species pedestrian_corridor;
 			//species house aspect:ThreeDhouse;
 			species people;
 		}
