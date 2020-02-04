@@ -19,6 +19,10 @@ global {
 	
 	graph pedestrian_network;
 	
+	// UTILS
+	float mnt_height <- first(mnt).shape.height;
+	float mnt_width <- first(mnt).shape.width;
+	
 	init {
 		create building from:building_data;
 		create road from:road_data;
@@ -27,9 +31,8 @@ global {
 		create people number:nb_agent with:[location::any_location_in(any(building where (each.location overlaps world)))];
 		
 		float maxgv <- max(mnt collect each.grid_value);
-		write sample(maxgv);
 		float mingv <- min(mnt collect each.grid_value);
-		write sample(mingv);
+		
 		ask mnt {
 			float val <- (grid_value - mingv) / (maxgv - mingv) * 255;
 			color <- grayscale(rgb(val, val, val));
@@ -40,12 +43,17 @@ global {
 
 species people skills:[moving] {
 	
+	float speed;
+	mnt my_cell -> mnt grid_at {location.x / mnt_height,location.y /mnt_width};
+	 
+	
 	reflex move_around {
 		do wander on:pedestrian_network;
 	}
 	
 	aspect default {
 		draw triangle(1.5) rotated_by heading;
+		draw my_cell.shape.contour color:#yellow;
 	}
 	
 }
