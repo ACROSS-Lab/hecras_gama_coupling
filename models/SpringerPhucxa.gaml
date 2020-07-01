@@ -14,10 +14,14 @@ global {
 	file road_data <- shape_file("../results/pedestrian.shp");
 
 	int nb_agent parameter:true init:10;
+	bool alert_people parameter:true init:false;
+	bool alert_sent <- false;
 	
 	geometry shape <- envelope(grid_data);
 	
 	graph pedestrian_network;
+	
+	point evacuation_point;
 	
 	// UTILS
 	float mnt_height <- first(mnt).shape.height;
@@ -27,6 +31,7 @@ global {
 		create building from:building_data;
 		create road from:road_data;
 		pedestrian_network <- as_edge_graph(road);
+		evacuation_point <- first(pedestrian_network.vertices sort_by (point(each).x - point(each).y));
 		
 		create people number:nb_agent with:[location::any_location_in(any(building where (each.location overlaps world)))];
 		
@@ -39,21 +44,32 @@ global {
 		}
 	}
 	
+	reflex alert when:alert_people and not(alert_sent) {
+		ask people {alert <- true;}
+		alert_sent <- true;
+	}
+	
 }
 
 species people skills:[moving] {
 	
 	float speed;
 	mnt my_cell -> mnt grid_at {location.x / mnt_height,location.y /mnt_width};
-	 
 	
-	reflex move_around {
+	bool normal_context -> not(alert);
+	bool alert;
+	
+	reflex move_around when:normal_context {
 		do wander on:pedestrian_network;
 	}
 	
+	reflex evacue when:alert {
+		do goto target:evacuation_point on:pedestrian_network; 
+	}
+	
 	aspect default {
-		draw triangle(1.5) rotated_by heading;
-		draw my_cell.shape.contour color:#yellow;
+		draw triangle(1.5) rotated_by heading color:alert?#violet:#yellow;
+		draw my_cell.shape.contour color:alert?#violet:#yellow;
 	}
 	
 }
@@ -85,6 +101,7 @@ experiment visual {
 			species building;
 			species road;
 			species people;
+			graphics "evacuation_point" { draw circle(3).contour buffer 0.4 at:evacuation_point color:#red; }
 		}	
 	}
 }
